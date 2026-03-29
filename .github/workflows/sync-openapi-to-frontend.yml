@@ -62,7 +62,6 @@ jobs:
       - name: Copy and commit if changed
         run: |
           cd /tmp/frontend-repo
-          mkdir -p "$(dirname "$FRONTEND_SPEC_PATH")"
           cp /tmp/openapi.json "$FRONTEND_SPEC_PATH"
 
           git add "$FRONTEND_SPEC_PATH"
