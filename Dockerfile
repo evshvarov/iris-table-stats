@@ -1,11 +1,13 @@
-ARG IMAGE=intersystemsdc/irishealth-community
-ARG IMAGE=intersystemsdc/iris-community
+# ARG IMAGE=intersystemsdc/irishealth-community
+# ARG IMAGE=intersystemsdc/iris-community
+ARG IMAGE=containers.intersystems.com/intersystems/iris-community:2025.3
+
 FROM $IMAGE
 
 WORKDIR /home/irisowner/dev
 
 ARG TESTS=0
-ARG MODULE="esh-vibe-back-demo"
+ARG MODULE="esh-iris-table-stats"
 ARG NAMESPACE="USER"
 
 ## Embedded Python environment
@@ -17,12 +19,15 @@ ENV PATH="/usr/irissys/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sb
 
 COPY .iris_init /home/irisowner/.iris_init
 
+RUN wget https://pm.community.intersystems.com/packages/zpm/0.9.2/installer -O /tmp/zpm.xml
+
+
 RUN --mount=type=bind,src=.,dst=. \
     iris start IRIS && \
 	iris session IRIS < iris.script && \
-    ([ $TESTS -eq 0 ] || iris session iris -U $NAMESPACE "##class(%ZPM.PackageManager).Shell(\"test $MODULE -v -only\",1,1)") && \
+    ([ $TESTS -eq 0 ] || printf 'zn "%s"\nzpm "test %s -v -only"\nhalt\n' "$NAMESPACE" "$MODULE" | iris session IRIS) && \
     iris stop IRIS quietly
 
-RUN old=http://localhost:52773/crud/_spec && \
-	new=http://localhost:57336/holefoods/api/_spec && \
-	sed -i "s|$old|$new|g" /usr/irissys/csp/swagger-ui/swagger-initializer.js
+# RUN old=http://localhost:52773/crud/_spec && \
+# 	new=http://localhost:57336/holefoods/api/_spec && \
+# 	sed -i "s|$old|$new|g" /usr/irissys/csp/swagger-ui/swagger-initializer.js

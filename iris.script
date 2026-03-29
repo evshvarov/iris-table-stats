@@ -2,6 +2,10 @@
 
     ;disabling password expire for development purposes
     zn "%SYS"
+    do $system.OBJ.Load("/tmp/zpm.xml", "ck")
+    zpm "enable -map -globally"
+    zpm "enable -community"
+    
     Do ##class(Security.Users).UnExpireUserPasswords("*")
 
     ; enabling callin for Embedded Python
