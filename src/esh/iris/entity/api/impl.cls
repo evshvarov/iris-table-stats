@@ -21,7 +21,7 @@ ClassMethod ListPersistentClasses(limit As %Integer = 100, offset As %Integer = 
     Set result = ..NewPagedResult(limit, offset)
     Set stmt = ##class(%SQL.Statement).%New()
     Set sql = "SELECT Name, Description, SqlSchemaName, SqlTableName FROM %Dictionary.CompiledClass WHERE ClassType = ?"
-    If package '= "" {
+    If $g(package) '= "" {
         Set sql = sql _ " AND Name %STARTSWITH ?"
     }
     Set sql = sql _ " ORDER BY Name LIMIT ? OFFSET ?"

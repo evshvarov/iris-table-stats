@@ -5,7 +5,7 @@
       },
     "objectscript.conn": {
       "active": false,
-      "host": "holefoods-iris.sandbox.developer.intersystems.com",
+      "host": "iris-table-stats.sandbox.developer.intersystems.com",
       "port": 443,
       "ns": "USER",
       "https": true,
