@@ -39,28 +39,32 @@ Method CleanupSampleData(parentId As %String, childId As %String) [ Private ]
 
 Method FindClassByName(items As %DynamicArray, target As %String) As %DynamicObject [ Private ]
 {
+    Set found = ""
     For i = 0:1:items.%Size()-1 {
         Set item = items.%Get(i)
         If $IsObject(item) {
             If item.name = target {
-                Quit item
+                Set found = item
+                Quit
             }
         }
     }
-    Quit ""
+    Quit found
 }
 
 Method FindRowById(items As %DynamicArray, targetId As %String) As %DynamicObject [ Private ]
 {
+    Set found = ""
     For i = 0:1:items.%Size()-1 {
         Set item = items.%Get(i)
         If $IsObject(item) {
             If item.%Get("%Id") = targetId {
-                Quit item
+                Set found = item
+                Quit
             }
         }
     }
-    Quit ""
+    Quit found
 }
 
 Method TestGetSpec()
