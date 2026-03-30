@@ -32,7 +32,7 @@ ClassMethod ListPersistentClasses(limit As %Integer = 100, offset As %Integer = 
         Quit result
     }
 
-    If package '= "" {
+    If $g(package) '= "" {
         Set rset = stmt.%Execute("persistent", package, limit, offset)
     } Else {
         Set rset = stmt.%Execute("persistent", limit, offset)
@@ -75,13 +75,6 @@ ClassMethod GetPersistentClassData(className As %String, limit As %Integer = 100
         Quit result
     }
 
-    Set tableRef = ..GetSqlTableReference(classInfo)
-    If tableRef = "" {
-        Do ..%SetStatusCode(500)
-        Do ..%SetHeader("X-Error", "Unable to resolve SQL table for class: "_className)
-        Quit result
-    }
-
     Set propInfos = ..GetClassPropertyInfos(className)
     If '$IsObject(propInfos) {
         Do ..%SetStatusCode(500)
@@ -89,35 +82,30 @@ ClassMethod GetPersistentClassData(className As %String, limit As %Integer = 100
         Quit result
     }
 
-    Set sql = "SELECT %ID AS ObjectId"
-    Set index = -1
-    While (index + 1) < propInfos.%Size() {
-        Set index = index + 1
-        Set propInfo = propInfos.%Get(index)
-        Set sql = sql _ ", " _ ..QuoteIdentifier(propInfo.name)
-    }
-    Set sql = sql _ " FROM "_tableRef_" ORDER BY %ID LIMIT ? OFFSET ?"
-
-    Set stmt = ##class(%SQL.Statement).%New()
-    Set sc = stmt.%Prepare(sql)
+    Set extent = ##class(%ResultSet).%New(className_":Extent")
+    Set sc = extent.Execute()
     If $$$ISERR(sc) {
         Do ..%SetStatusCode(500)
         Do ..%SetHeader("X-Error", "Status error: "_$System.Status.GetErrorText(sc))
         Quit result
     }
 
-    Set rset = stmt.%Execute(limit, offset)
-    If rset.%SQLCODE < 0 {
-        Do ..%SetStatusCode(500)
-        Do ..%SetHeader("X-Error", "SQL error: "_rset.%Message)
-        Quit result
-    }
-
-    While rset.%Next() {
+    Set skipped = 0
+    Set collected = 0
+    While extent.Next() {
+        If skipped < offset {
+            Set skipped = skipped + 1
+            Continue
+        }
+        Quit:collected'<limit
+        Set objectId = extent.Data("ID")
+        Set obj = $classmethod(className, "%OpenId", objectId)
+        Continue:'$IsObject(obj)
         Set item = {}
-        Do item.%Set("%Id", rset.%Get("ObjectId"))
-        Do ..PopulateRowData(.item, rset, propInfos)
+        Do item.%Set("%Id", objectId)
+        Do ..PopulateObjectData(.item, obj, propInfos)
         Do result.items.%Push(item)
+        Set collected = collected + 1
     }
 
     Do result.%Set("count", result.items.%Size())
@@ -186,33 +174,10 @@ ClassMethod GetPersistentClassInfo(className As %String) As %DynamicObject [ Pri
     Quit item
 }
 
-ClassMethod GetSqlTableReference(classInfo As %DynamicObject) As %String [ Private ]
-{
-    Set schemaName = classInfo.SqlSchemaName
-    Set tableName = classInfo.SqlTableName
-
-    If (schemaName = "") || (tableName = "") {
-        Set className = classInfo.Name
-        Set lastPiece = $Length(className, ".")
-        Set schemaName = $Piece(className, ".", 1, lastPiece - 1)
-        Set tableName = $Piece(className, ".", lastPiece)
-    }
-
-    If schemaName = "" {
-        Quit ..QuoteIdentifier(tableName)
-    }
-    Quit ..QuoteIdentifier(schemaName) _ "." _ ..QuoteIdentifier(tableName)
-}
-
-ClassMethod QuoteIdentifier(name As %String) As %String [ Private ]
-{
-    Quit """" _ $Replace(name, """", """""") _ """"
-}
-
 ClassMethod GetClassPropertyInfos(className As %String) As %DynamicArray [ Private ]
 {
     Set stmt = ##class(%SQL.Statement).%New()
-    Set sql = "SELECT Name, Type FROM %Dictionary.CompiledProperty WHERE parent = ? AND Transient = 0 AND Calculated = 0 AND MultiDimensional = 0 ORDER BY Name"
+    Set sql = "SELECT Name, Type FROM %Dictionary.CompiledProperty WHERE parent = ? AND Private = 0 AND Transient = 0 AND Calculated = 0 AND MultiDimensional = 0 ORDER BY Name"
     Set sc = stmt.%Prepare(sql)
     If $$$ISERR(sc) {
         Quit ""
@@ -233,20 +198,31 @@ ClassMethod GetClassPropertyInfos(className As %String) As %DynamicArray [ Priva
     Quit propInfos
 }
 
-ClassMethod PopulateRowData(ByRef item As %DynamicObject, rset As %SQL.StatementResult, propInfos As %DynamicArray) [ Private ]
+ClassMethod PopulateObjectData(ByRef item As %DynamicObject, obj As %RegisteredObject, propInfos As %DynamicArray) [ Private ]
 {
     Set index = -1
     While (index + 1) < propInfos.%Size() {
         Set index = index + 1
         Set propInfo = propInfos.%Get(index)
         Set propName = propInfo.name
-        Set value = rset.%Get(propName)
-        Do item.%Set(propName, ..NormalizeValue(value, propInfo.type))
+        Try {
+            Set value = $PROPERTY(obj, propName)
+            Do item.%Set(propName, ..NormalizeValue(value, propInfo.type))
+        } Catch ex {
+            Continue
+        }
     }
 }
 
 ClassMethod NormalizeValue(value, type As %String = "") [ Private ]
 {
+    If $IsObject(value) {
+        Set ref = {}
+        Do ref.%Set("className", value.%ClassName(1))
+        Do ref.%Set("id", value.%Id())
+        Quit ref
+    }
+
     If $Extract(type, 1) = "%" {
         Quit value
     }

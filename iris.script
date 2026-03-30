@@ -19,6 +19,7 @@
     zn "USER"
     zpm "install swagger-ui"
     zpm "install iterm"
+    zpm "install dataset-countries"
     zpm "load /home/irisowner/dev -v":1:1
     
     halt
