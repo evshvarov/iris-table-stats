@@ -62,6 +62,22 @@ XData OpenAPI [ MimeType = application/json ]
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "includeSystem",
+            "in": "query",
+            "required": false,
+            "type": "boolean",
+            "default": true,
+            "description": "Include system classes such as classes in % packages."
+          },
+          {
+            "name": "includeMapped",
+            "in": "query",
+            "required": false,
+            "type": "boolean",
+            "default": true,
+            "description": "Include classes mapped into the current namespace from another namespace."
           }
         ],
         "responses": {
@@ -123,6 +139,37 @@ XData OpenAPI [ MimeType = application/json ]
           }
         }
       }
+    },
+    "/classes/{className}/stats": {
+      "get": {
+        "summary": "Get population stats for a persistent class",
+        "operationId": "GetPersistentClassStats",
+        "parameters": [
+          {
+            "name": "className",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Class population stats",
+            "schema": {
+              "$ref": "#/definitions/PersistentClassStatsResponse"
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "404": {
+            "description": "Class not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -169,6 +216,33 @@ XData OpenAPI [ MimeType = application/json ]
         }
       }
     },
+    "PersistentClassColumnStats": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "populatedCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "emptyCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "populatedPercent": {
+          "type": "number",
+          "format": "double"
+        },
+        "emptyPercent": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
     "PersistentClassDataResponse": {
       "type": "object",
       "properties": {
@@ -195,6 +269,27 @@ XData OpenAPI [ MimeType = application/json ]
         "offset": {
           "type": "integer",
           "format": "int32"
+        }
+      }
+    },
+    "PersistentClassStatsResponse": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string"
+        },
+        "className": {
+          "type": "string"
+        },
+        "totalRows": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PersistentClassColumnStats"
+          }
         }
       }
     }

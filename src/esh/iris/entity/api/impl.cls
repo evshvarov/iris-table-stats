@@ -14,17 +14,19 @@ ClassMethod GetSpec() As %DynamicObject
     Quit spec
 }
 
-ClassMethod ListPersistentClasses(limit As %Integer = 100, offset As %Integer = 0, package As %String = "") As %DynamicObject
+ClassMethod ListPersistentClasses(limit As %Integer = 100, offset As %Integer = 0, package As %String = "", includeSystem As %String = "", includeMapped As %String = "") As %DynamicObject
 {
     Set limit = ..NormalizeLimit(limit)
     Set offset = ..NormalizeOffset(offset)
+    Set includeSystem = ..NormalizeBoolean(includeSystem, 1)
+    Set includeMapped = ..NormalizeBoolean(includeMapped, 1)
     Set result = ..NewPagedResult(limit, offset)
     Set stmt = ##class(%SQL.Statement).%New()
-    Set sql = "SELECT Name, Description, SqlSchemaName, SqlTableName FROM %Dictionary.CompiledClass WHERE ClassType = ?"
+    Set sql = "SELECT Name, Description, SqlSchemaName, SqlTableName, System, CompileNamespace FROM %Dictionary.CompiledClass WHERE ClassType = ?"
     If $g(package) '= "" {
         Set sql = sql _ " AND Name %STARTSWITH ?"
     }
-    Set sql = sql _ " ORDER BY Name LIMIT ? OFFSET ?"
+    Set sql = sql _ " ORDER BY Name"
     Set sc = stmt.%Prepare(sql)
     If $$$ISERR(sc) {
         Do ..%SetStatusCode(500)
@@ -33,9 +35,9 @@ ClassMethod ListPersistentClasses(limit As %Integer = 100, offset As %Integer = 
     }
 
     If $g(package) '= "" {
-        Set rset = stmt.%Execute("persistent", package, limit, offset)
+        Set rset = stmt.%Execute("persistent", package)
     } Else {
-        Set rset = stmt.%Execute("persistent", limit, offset)
+        Set rset = stmt.%Execute("persistent")
     }
     If rset.%SQLCODE < 0 {
         Do ..%SetStatusCode(500)
@@ -43,13 +45,22 @@ ClassMethod ListPersistentClasses(limit As %Integer = 100, offset As %Integer = 
         Quit result
     }
 
+    Set skipped = 0
+    Set collected = 0
     While rset.%Next() {
+        Continue:'..ShouldIncludeClass(rset.%Get("System"), rset.%Get("CompileNamespace"), includeSystem, includeMapped)
+        If skipped < offset {
+            Set skipped = skipped + 1
+            Continue
+        }
+        Quit:collected'<limit
         Set item = {}
         Set item.name = rset.%Get("Name")
         Set item.description = rset.%Get("Description")
         Set item.sqlSchemaName = rset.%Get("SqlSchemaName")
         Set item.sqlTableName = rset.%Get("SqlTableName")
         Do result.items.%Push(item)
+        Set collected = collected + 1
     }
 
     Do result.%Set("count", result.items.%Size())
@@ -112,6 +123,35 @@ ClassMethod GetPersistentClassData(className As %String, limit As %Integer = 100
     Quit result
 }
 
+ClassMethod GetPersistentClassStats(className As %String) As %DynamicObject
+{
+    Set result = {}
+    Do result.%Set("namespace", $Namespace)
+    Do result.%Set("className", className)
+    Do result.%Set("totalRows", 0)
+    Do result.%Set("columns", [])
+    If ('..IsValidClassName(className)) {
+        Do ..%SetStatusCode(400)
+        Do ..%SetHeader("X-Error", "Invalid className")
+        Quit result
+    }
+
+    Set classInfo = ..GetPersistentClassInfo(className)
+    If '$IsObject(classInfo) {
+        Do ..%SetStatusCode(404)
+        Do ..%SetHeader("X-Error", "Persistent class not found: "_className)
+        Quit result
+    }
+
+    Set result = ##class(esh.iris.entity.stats).CalculatePopulationStats(className, .sc)
+    If $$$ISERR(sc) {
+        Do ..%SetStatusCode(500)
+        Do ..%SetHeader("X-Error", "Status error: "_$System.Status.GetErrorText(sc))
+        Quit result
+    }
+    Quit result
+}
+
 ClassMethod NewPagedResult(limit As %Integer, offset As %Integer) As %DynamicObject [ Private ]
 {
     Set result = {}
@@ -131,6 +171,38 @@ ClassMethod NormalizeLimit(limit As %Integer) As %Integer [ Private ]
 ClassMethod NormalizeOffset(offset As %Integer) As %Integer [ Private ]
 {
     Quit $Select(offset'<0:offset, 1:0)
+}
+
+ClassMethod NormalizeBoolean(value, defaultValue As %Boolean = 1) As %Boolean [ Private ]
+{
+    If value = "" {
+        Quit defaultValue
+    }
+    If +value = 0 {
+        Quit 0
+    }
+
+    Set normalized = $ZConvert(value, "L")
+    If (normalized = "false") || (normalized = "no") {
+        Quit 0
+    }
+    Quit 1
+}
+
+ClassMethod ShouldIncludeClass(system, compileNamespace As %String, includeSystem As %Boolean, includeMapped As %Boolean) As %Boolean [ Private ]
+{
+    If ('includeSystem),(+system '= 0) {
+        Quit 0
+    }
+    If 'includeMapped {
+        If compileNamespace = "" {
+            Quit 0
+        }
+        If compileNamespace '[ ("^" _ $Namespace) {
+            Quit 0
+        }
+    }
+    Quit 1
 }
 
 ClassMethod IsValidClassName(className As %String) As %Boolean [ Private ]

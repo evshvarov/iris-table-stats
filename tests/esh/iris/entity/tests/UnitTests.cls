@@ -67,6 +67,21 @@ Method FindRowById(items As %DynamicArray, targetId As %String) As %DynamicObjec
     Quit found
 }
 
+Method FindColumnByName(columns As %DynamicArray, target As %String) As %DynamicObject [ Private ]
+{
+    Set found = ""
+    For i = 0:1:columns.%Size()-1 {
+        Set item = columns.%Get(i)
+        If $IsObject(item) {
+            If item.name = target {
+                Set found = item
+                Quit
+            }
+        }
+    }
+    Quit found
+}
+
 Method TestGetSpec()
 {
     Do ..InitRequestResponse()
@@ -75,6 +90,8 @@ Method TestGetSpec()
     Do $$$AssertEquals(spec.swagger, "2.0", "Unexpected swagger version")
     Do $$$AssertTrue(spec.paths.%IsDefined("/classes"), "Spec must expose /classes")
     Do $$$AssertTrue(spec.paths.%IsDefined("/classes/{className}/data"), "Spec must expose class data endpoint")
+    Do $$$AssertTrue(spec.paths.%IsDefined("/classes/{className}/stats"), "Spec must expose class stats endpoint")
+    Do $$$AssertTrue(spec.paths.%Get("/classes").get.parameters.%Size() > 3, "Spec must expose class filters")
 }
 
 Method TestListPersistentClasses()
@@ -90,6 +107,20 @@ Method TestListPersistentClasses()
     Set classInfo = ..FindClassByName(result.items, "esh.iris.entity.tests.SampleChild")
     Do $$$AssertTrue($IsObject(classInfo), "SampleChild should be listed as persistent")
     Do $$$AssertEquals(classInfo.sqlTableName, "SampleChild", "Unexpected SQL table name")
+}
+
+Method TestListPersistentClassesExcludeSystemAndMapped()
+{
+    Do ..InitRequestResponse()
+    Set result = ##class(esh.iris.entity.api.impl).ListPersistentClasses(500, 0, "", 0, 0)
+    Do $$$AssertTrue($IsObject(result), "Filtered list response must be an object")
+    Do $$$AssertTrue($IsObject(result.items), "Filtered items must be a dynamic array")
+
+    Set systemClassInfo = ..FindClassByName(result.items, "%CSP.Session")
+    Do $$$AssertTrue('$IsObject(systemClassInfo), "System class should be filtered out")
+
+    Set classInfo = ..FindClassByName(result.items, "esh.iris.entity.tests.SampleChild")
+    Do $$$AssertTrue($IsObject(classInfo), "Local non-system class should remain in filtered list")
 }
 
 Method TestGetPersistentClassData()
@@ -132,6 +163,77 @@ Method TestGetPersistentClassDataMissingClass()
     Set result = ##class(esh.iris.entity.api.impl).GetPersistentClassData("esh.iris.entity.tests.DoesNotExist", 10, 0)
     Do $$$AssertTrue($IsObject(result), "Missing class response must be an object")
     Do $$$AssertEquals(%response.Status, 404, "Missing class should set 404")
+}
+
+Method TestGetPersistentClassStats()
+{
+    Do ..InitRequestResponse()
+    Set parentId = ""
+    Set childId1 = ""
+    Set childId2 = ""
+    Try {
+        Set parent = ##class(esh.iris.entity.tests.SampleParent).%New()
+        Set parent.Name = "Stats Parent "_$J_"-"_$Random(10000)
+        Set sc = parent.%Save()
+        Do $$$AssertStatusOK(sc, "Saving stats parent failed")
+
+        Set child1 = ##class(esh.iris.entity.tests.SampleChild).%New()
+        Set child1.Name = "Filled Child "_$J_"-"_$Random(10000)
+        Set child1.Amount = 42
+        Set child1.Parent = parent
+        Set sc = child1.%Save()
+        Do $$$AssertStatusOK(sc, "Saving first stats child failed")
+
+        Set child2 = ##class(esh.iris.entity.tests.SampleChild).%New()
+        Set child2.Name = ""
+        Set sc = child2.%Save()
+        Do $$$AssertStatusOK(sc, "Saving second stats child failed")
+
+        Set parentId = parent.%Id()
+        Set childId1 = child1.%Id()
+        Set childId2 = child2.%Id()
+
+        Set result = ##class(esh.iris.entity.api.impl).GetPersistentClassStats("esh.iris.entity.tests.SampleChild")
+        Do $$$AssertTrue($IsObject(result), "Stats response must be an object")
+        Do $$$AssertEquals(result.className, "esh.iris.entity.tests.SampleChild", "Stats class name mismatch")
+        Do $$$AssertTrue(result.totalRows >= 2, "Stats totalRows should include inserted rows")
+        Do $$$AssertTrue($IsObject(result.columns), "Stats columns must be a dynamic array")
+
+        Set amountStats = ..FindColumnByName(result.columns, "Amount")
+        Do $$$AssertTrue($IsObject(amountStats), "Amount stats should exist")
+        Do $$$AssertTrue(amountStats.populatedCount >= 1, "Amount populated count should be at least 1")
+        Do $$$AssertTrue(amountStats.emptyCount >= 1, "Amount empty count should be at least 1")
+
+        Set parentStats = ..FindColumnByName(result.columns, "Parent")
+        Do $$$AssertTrue($IsObject(parentStats), "Parent stats should exist")
+        Do $$$AssertTrue(parentStats.populatedCount >= 1, "Parent populated count should be at least 1")
+        Do $$$AssertTrue(parentStats.emptyCount >= 1, "Parent empty count should be at least 1")
+
+        Set nameStats = ..FindColumnByName(result.columns, "Name")
+        Do $$$AssertTrue($IsObject(nameStats), "Name stats should exist")
+        Do $$$AssertTrue(nameStats.populatedPercent > 0, "Name populated percent should be greater than 0")
+        Do $$$AssertTrue(nameStats.emptyPercent > 0, "Name empty percent should be greater than 0")
+    } Catch ex {
+        If childId2 '= "" {
+            Do ##class(esh.iris.entity.tests.SampleChild).%DeleteId(childId2)
+        }
+        If childId1 '= "" {
+            Do ##class(esh.iris.entity.tests.SampleChild).%DeleteId(childId1)
+        }
+        If parentId '= "" {
+            Do ##class(esh.iris.entity.tests.SampleParent).%DeleteId(parentId)
+        }
+        Throw ex
+    }
+    If childId2 '= "" {
+        Do ##class(esh.iris.entity.tests.SampleChild).%DeleteId(childId2)
+    }
+    If childId1 '= "" {
+        Do ##class(esh.iris.entity.tests.SampleChild).%DeleteId(childId1)
+    }
+    If parentId '= "" {
+        Do ##class(esh.iris.entity.tests.SampleParent).%DeleteId(parentId)
+    }
 }
 
 }

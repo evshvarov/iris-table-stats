@@ -14,12 +14,14 @@
     set prop("AutheEnabled")=48
     do ##class(Security.Services).Modify("%Service_CallIn",.prop)
 
+    zpm "install iterm"
     zpm "install passwordless"
+
     ; importing the source code of the repository as ZPM module
     zn "USER"
     zpm "install swagger-ui"
-    zpm "install iterm"
     zpm "install dataset-countries"
+    zpm "install dataset-health"
     zpm "load /home/irisowner/dev -v":1:1
     
     halt
