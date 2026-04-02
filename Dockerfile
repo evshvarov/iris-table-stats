@@ -13,7 +13,7 @@ ARG NAMESPACE="USER"
 
 COPY .iris_init /home/irisowner/.iris_init
 
-RUN wget https://pm.community.intersystems.com/packages/zpm/0.9.2/installer -O /tmp/zpm.xml
+RUN wget https://pm.community.intersystems.com/packages/zpm/latest/installer -O /tmp/zpm.xml
 
 
 RUN --mount=type=bind,src=.,dst=. \
