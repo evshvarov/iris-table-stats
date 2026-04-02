@@ -120,8 +120,6 @@ If you also want sample data:
 
 ```objectscript
 USER>zpm
-USER:zpm>install esh-iris-table-stats
-USER:zpm>install iris-table-stats-frontend
 USER:zpm>install iris-dataset-countries
 ```
 
@@ -129,8 +127,6 @@ or:
 
 ```objectscript
 USER>zpm
-USER:zpm>install esh-iris-table-stats
-USER:zpm>install iris-table-stats-frontend
 USER:zpm>install Health-Dataset
 ```
 
