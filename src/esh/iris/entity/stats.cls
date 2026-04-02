@@ -50,6 +50,59 @@ ClassMethod CalculatePopulationStats(className As %String, ByRef sc As %Status) 
     Quit result
 }
 
+ClassMethod GetRecordsWithEmptyValue(className As %String, columnName As %String, limit As %Integer, offset As %Integer, ByRef sc As %Status) As %DynamicObject
+{
+    Set sc = $$$OK
+    Set result = {}
+    Do result.%Set("namespace", $Namespace)
+    Do result.%Set("className", className)
+    Do result.%Set("columnName", columnName)
+    Do result.%Set("items", [])
+    Do result.%Set("count", 0)
+    Do result.%Set("limit", limit)
+    Do result.%Set("offset", offset)
+
+    Set propInfos = ..GetClassPropertyInfos(className, .sc)
+    If $$$ISERR(sc) {
+        Quit result
+    }
+
+    Set targetPropInfo = ..FindPropertyInfo(propInfos, columnName)
+    If '$IsObject(targetPropInfo) {
+        Set sc = $$$ERROR($$$GeneralError, "Property not found: "_columnName)
+        Quit result
+    }
+
+    Set extent = ##class(%ResultSet).%New(className_":Extent")
+    Set sc = extent.Execute()
+    If $$$ISERR(sc) {
+        Quit result
+    }
+
+    Set skipped = 0
+    Set collected = 0
+    While extent.Next() {
+        Set objectId = extent.Data("ID")
+        Set obj = $classmethod(className, "%OpenId", objectId)
+        Continue:'$IsObject(obj)
+        Set value = ..ReadPropertyValue(obj, columnName)
+        Continue:'..IsEmptyValue(value)
+        If skipped < offset {
+            Set skipped = skipped + 1
+            Continue
+        }
+        Quit:collected'<limit
+        Set item = {}
+        Do item.%Set("%Id", objectId)
+        Do ..PopulateObjectData(.item, obj, propInfos)
+        Do result.items.%Push(item)
+        Set collected = collected + 1
+    }
+
+    Do result.%Set("count", result.items.%Size())
+    Quit result
+}
+
 ClassMethod GetClassPropertyInfos(className As %String, ByRef sc As %Status) As %DynamicArray [ Private ]
 {
     Set stmt = ##class(%SQL.Statement).%New()
@@ -95,6 +148,42 @@ ClassMethod UpdateColumnStats(columns As %DynamicArray, obj As %RegisteredObject
     }
 }
 
+ClassMethod FindPropertyInfo(propInfos As %DynamicArray, columnName As %String) As %DynamicObject [ Private ]
+{
+    Set found = ""
+    Set index = -1
+    While (index + 1) < propInfos.%Size() {
+        Set index = index + 1
+        Set propInfo = propInfos.%Get(index)
+        If propInfo.name = columnName {
+            Set found = propInfo
+            Quit
+        }
+    }
+    Quit found
+}
+
+ClassMethod PopulateObjectData(ByRef item As %DynamicObject, obj As %RegisteredObject, propInfos As %DynamicArray) [ Private ]
+{
+    Set index = -1
+    While (index + 1) < propInfos.%Size() {
+        Set index = index + 1
+        Set propInfo = propInfos.%Get(index)
+        Set value = ..ReadPropertyValue(obj, propInfo.name)
+        Do item.%Set(propInfo.name, ..NormalizeValue(value, propInfo.type))
+    }
+}
+
+ClassMethod ReadPropertyValue(obj As %RegisteredObject, propName As %String)
+{
+    Set value = ""
+    Try {
+        Set value = $PROPERTY(obj, propName)
+    } Catch ex {
+    }
+    Quit value
+}
+
 ClassMethod FinalizeColumnStats(columns As %DynamicArray, totalRows As %Integer) [ Private ]
 {
     Set index = -1
@@ -112,6 +201,29 @@ ClassMethod IsEmptyValue(value) As %Boolean [ Private ]
         Quit 0
     }
     Quit $Select($Length(value)=0:1, 1:0)
+}
+
+ClassMethod NormalizeValue(value, type As %String = "") [ Private ]
+{
+    If $IsObject(value) {
+        Set ref = {}
+        Do ref.%Set("className", value.%ClassName(1))
+        Do ref.%Set("id", value.%Id())
+        Quit ref
+    }
+
+    If $Extract(type, 1) = "%" {
+        Quit value
+    }
+
+    If value = "" {
+        Quit value
+    }
+
+    Set ref = {}
+    Do ref.%Set("className", type)
+    Do ref.%Set("id", value)
+    Quit ref
 }
 
 ClassMethod Percent(value As %Integer, total As %Integer) As %Double [ Private ]

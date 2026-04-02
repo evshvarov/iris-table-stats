@@ -26,7 +26,7 @@
 				"intersystems.servers": {
 					"devcontainer": {
 						"username": "SuperUser",
-						"password": "SYS",
+						"password": "*IrisDemo123",
 						"webServer": {
 							"scheme": "http",
 							"host": "127.0.0.1",

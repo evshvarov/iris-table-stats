@@ -221,3 +221,8 @@ Starting IRIS
 
 
 22:00:59 2026-03-30 [INFO] ...started InterSystems IRIS instance IRIS
+13:19:31 2026-04-02 [INFO] Files differ; merging /home/irisowner/dev/merge.cpf...
+13:19:31 2026-04-02 [INFO] Error merging /home/irisowner/dev/merge.cpf: 
+IRIS Merge of /home/irisowner/dev/merge.cpf into /usr/irissys/iris.cpf
+ERROR #5002: ObjectScript error: <INVALID CLASS>ListExecute+5^Config.ComPorts.1 *%SYS.sqlcq.uE6rnnLVu1uVHi3dRFNLR8gJCyyl
+IRIS Merge failed,Command "iris merge IRIS /home/irisowner/dev/merge.cpf" exited with status 1792

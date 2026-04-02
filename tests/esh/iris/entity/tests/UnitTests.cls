@@ -91,6 +91,7 @@ Method TestGetSpec()
     Do $$$AssertTrue(spec.paths.%IsDefined("/classes"), "Spec must expose /classes")
     Do $$$AssertTrue(spec.paths.%IsDefined("/classes/{className}/data"), "Spec must expose class data endpoint")
     Do $$$AssertTrue(spec.paths.%IsDefined("/classes/{className}/stats"), "Spec must expose class stats endpoint")
+    Do $$$AssertTrue(spec.paths.%IsDefined("/classes/{className}/empty-records"), "Spec must expose empty records endpoint")
     Do $$$AssertTrue(spec.paths.%Get("/classes").get.parameters.%Size() > 3, "Spec must expose class filters")
 }
 
@@ -234,6 +235,74 @@ Method TestGetPersistentClassStats()
     If parentId '= "" {
         Do ##class(esh.iris.entity.tests.SampleParent).%DeleteId(parentId)
     }
+}
+
+Method TestGetPersistentClassEmptyRecords()
+{
+    Do ..InitRequestResponse()
+    Set parentId = ""
+    Set childId1 = ""
+    Set childId2 = ""
+    Try {
+        Set parent = ##class(esh.iris.entity.tests.SampleParent).%New()
+        Set parent.Name = "Empty Parent "_$J_"-"_$Random(10000)
+        Set sc = parent.%Save()
+        Do $$$AssertStatusOK(sc, "Saving empty parent failed")
+
+        Set child1 = ##class(esh.iris.entity.tests.SampleChild).%New()
+        Set child1.Name = "Filled Empty Test "_$J_"-"_$Random(10000)
+        Set child1.Amount = 7
+        Set child1.Parent = parent
+        Set sc = child1.%Save()
+        Do $$$AssertStatusOK(sc, "Saving filled child failed")
+
+        Set child2 = ##class(esh.iris.entity.tests.SampleChild).%New()
+        Set child2.Name = ""
+        Set sc = child2.%Save()
+        Do $$$AssertStatusOK(sc, "Saving empty child failed")
+
+        Set parentId = parent.%Id()
+        Set childId1 = child1.%Id()
+        Set childId2 = child2.%Id()
+
+        Set result = ##class(esh.iris.entity.api.impl).GetPersistentClassEmptyRecords("esh.iris.entity.tests.SampleChild", "Name", 50, 0)
+        Do $$$AssertTrue($IsObject(result), "Empty records response must be an object")
+        Do $$$AssertEquals(result.className, "esh.iris.entity.tests.SampleChild", "Empty records class name mismatch")
+        Do $$$AssertEquals(result.columnName, "Name", "Empty records column name mismatch")
+        Do $$$AssertTrue($IsObject(result.items), "Empty records items must be a dynamic array")
+
+        Set row = ..FindRowById(result.items, childId2)
+        Do $$$AssertTrue($IsObject(row), "Row with empty Name should be returned")
+        Do $$$AssertEquals(row.Name, "", "Returned row should have empty Name")
+    } Catch ex {
+        If childId2 '= "" {
+            Do ##class(esh.iris.entity.tests.SampleChild).%DeleteId(childId2)
+        }
+        If childId1 '= "" {
+            Do ##class(esh.iris.entity.tests.SampleChild).%DeleteId(childId1)
+        }
+        If parentId '= "" {
+            Do ##class(esh.iris.entity.tests.SampleParent).%DeleteId(parentId)
+        }
+        Throw ex
+    }
+    If childId2 '= "" {
+        Do ##class(esh.iris.entity.tests.SampleChild).%DeleteId(childId2)
+    }
+    If childId1 '= "" {
+        Do ##class(esh.iris.entity.tests.SampleChild).%DeleteId(childId1)
+    }
+    If parentId '= "" {
+        Do ##class(esh.iris.entity.tests.SampleParent).%DeleteId(parentId)
+    }
+}
+
+Method TestGetPersistentClassEmptyRecordsInvalidColumn()
+{
+    Do ..InitRequestResponse()
+    Set result = ##class(esh.iris.entity.api.impl).GetPersistentClassEmptyRecords("esh.iris.entity.tests.SampleChild", "DoesNotExist", 10, 0)
+    Do $$$AssertTrue($IsObject(result), "Invalid column response must be an object")
+    Do $$$AssertEquals(%response.Status, 400, "Invalid column should set 400")
 }
 
 }

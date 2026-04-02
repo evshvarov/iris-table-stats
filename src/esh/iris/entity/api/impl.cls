@@ -152,6 +152,45 @@ ClassMethod GetPersistentClassStats(className As %String) As %DynamicObject
     Quit result
 }
 
+ClassMethod GetPersistentClassEmptyRecords(className As %String, columnName As %String, limit As %Integer = 100, offset As %Integer = 0) As %DynamicObject
+{
+    Set limit = ..NormalizeLimit(limit)
+    Set offset = ..NormalizeOffset(offset)
+    Set result = ..NewPagedResult(limit, offset)
+    Do result.%Set("className", className)
+    Do result.%Set("columnName", columnName)
+    If ('..IsValidClassName(className)) {
+        Do ..%SetStatusCode(400)
+        Do ..%SetHeader("X-Error", "Invalid className")
+        Quit result
+    }
+    If columnName = "" {
+        Do ..%SetStatusCode(400)
+        Do ..%SetHeader("X-Error", "columnName required")
+        Quit result
+    }
+
+    Set classInfo = ..GetPersistentClassInfo(className)
+    If '$IsObject(classInfo) {
+        Do ..%SetStatusCode(404)
+        Do ..%SetHeader("X-Error", "Persistent class not found: "_className)
+        Quit result
+    }
+
+    Set result = ##class(esh.iris.entity.stats).GetRecordsWithEmptyValue(className, columnName, limit, offset, .sc)
+    If $$$ISERR(sc) {
+        If $System.Status.GetErrorText(sc)["Property not found: " {
+            Do ..%SetStatusCode(400)
+            Do ..%SetHeader("X-Error", $System.Status.GetErrorText(sc))
+        } Else {
+            Do ..%SetStatusCode(500)
+            Do ..%SetHeader("X-Error", "Status error: "_$System.Status.GetErrorText(sc))
+        }
+        Quit result
+    }
+    Quit result
+}
+
 ClassMethod NewPagedResult(limit As %Integer, offset As %Integer) As %DynamicObject [ Private ]
 {
     Set result = {}

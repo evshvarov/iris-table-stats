@@ -170,6 +170,59 @@ XData OpenAPI [ MimeType = application/json ]
           }
         }
       }
+    },
+    "/classes/{className}/empty-records": {
+      "get": {
+        "summary": "Get records where the specified column is empty",
+        "operationId": "GetPersistentClassEmptyRecords",
+        "parameters": [
+          {
+            "name": "className",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "columnName",
+            "in": "query",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32",
+            "default": 100
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32",
+            "default": 0
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Records where the specified column is empty",
+            "schema": {
+              "$ref": "#/definitions/PersistentClassDataResponse"
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "404": {
+            "description": "Class not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
     }
   },
   "definitions": {
