@@ -48,26 +48,6 @@ USER>zpm
 USER:zpm>install esh-iris-table-stats
 ```
 
-If you are using the test registry, you can switch to it first:
-
-```objectscript
-USER>zpm
-USER:zpm>repo -n registry -r -url https://test.pm.community.intersystems.com/registry/ -user test -pass PassWord42
-USER:zpm>install esh-iris-table-stats
-```
-
-To switch back to the public registry:
-
-```objectscript
-USER:zpm>repo -r -n registry -url https://pm.community.intersystems.com/ -user "" -pass ""
-```
-
-If you want to install directly from source during development:
-
-```objectscript
-USER>zpm
-USER:zpm>load /path/to/iris-table-stats
-USER:zpm>install esh-iris-table-stats
 ```
 
 ## Related Dataset Packages
