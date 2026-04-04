@@ -50,19 +50,6 @@ USER:zpm>install esh-iris-table-stats
 
 ```
 
-## Related Dataset Packages
-
-This backend becomes much more useful when it is installed together with demo or sample datasets.
-
-Recommended companion packages:
-- `iris-dataset-countries`
-  - Open Exchange: `https://openexchange.intersystems.com/package/iris-dataset-countries`
-- `Health-Dataset`
-  - Open Exchange: `https://openexchange.intersystems.com/package/Health-Dataset`
-  - Author: Jury
-
-These packages give you realistic persistent classes to inspect through this API and make the population stats endpoints much more meaningful.
-
 ## Recommended Frontend
 
 Recommended UI:
@@ -77,6 +64,19 @@ Install the frontend package with IPM as well:
 USER>zpm
 USER:zpm>install iris-table-stats-frontend
 ```
+
+## Related Dataset Packages
+
+You may find useful the following several demo or sample datasets.
+
+Recommended companion packages:
+- `iris-dataset-countries`
+  - Open Exchange: `https://openexchange.intersystems.com/package/iris-dataset-countries`
+- `Health-Dataset`
+  - Open Exchange: `https://openexchange.intersystems.com/package/Health-Dataset`
+  - Author: Jury
+
+These packages give you realistic persistent classes to inspect through this API and make the population stats endpoints much more meaningful.
 
 Example UI screenshots:
 
