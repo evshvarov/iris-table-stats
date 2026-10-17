@@ -10,6 +10,9 @@ It is intended for data quality and data knowledge use cases:
 
 The module exposes a REST API under `/iris-table-stats/api`.
 
+It also contains the UI layer available at /iris-table-stats-ui/index.html
+which is an IPM package developed [in this repository](https://github.com/evshvarov/iris-class-explorer)
+
 ## What This Repo Provides
 
 After installation, the backend exposes endpoints such as:
