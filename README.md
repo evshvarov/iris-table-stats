@@ -163,3 +163,5 @@ USER:zpm>test esh-iris-table-stats
 ## Summary
 
 Use this repository when you need a small IRIS backend that helps you understand how well persistent class data is populated, especially when paired with sample datasets and the `iris-table-stats-frontend` UI.
+
+once copied don't forget to change the password hash in merge.cpf
