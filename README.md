@@ -2,6 +2,8 @@
 
 `iris-table-stats` is an InterSystems IRIS backend module for exploring persistent classes and measuring how well their fields are populated.
 
+Once installed open: your-server/iris-table-stats-ui/
+
 It is intended for data quality and data knowledge use cases:
 - list persistent classes available in the current namespace
 - browse records of a selected class
